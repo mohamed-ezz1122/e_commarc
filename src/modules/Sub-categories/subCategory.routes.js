@@ -9,7 +9,7 @@ import { multerMiddleLocal } from "../../middlewares/multer.js";
 
 const router=Router()
 
-router.post('/',auth(categEndPoints.ADD_CATEG),multerMiddleLocal({
+router.post('/:categoryId',auth(categEndPoints.ADD_CATEG),multerMiddleLocal({
     extensions:allowedExtensions.image
 }).single('image'),expressAsyncHandler(SU.addSubCategory))
 router.put('/:categoryId/:subCategoryId',multerMiddleLocal({
@@ -17,6 +17,8 @@ router.put('/:categoryId/:subCategoryId',multerMiddleLocal({
 }).single('image'),auth(categEndPoints.ADD_CATEG),expressAsyncHandler(SU.updateSubCategory))
 router.delete('/:subCategoryId',auth(categEndPoints.ADD_CATEG),expressAsyncHandler(SU.deleteSubCategory))
 router.get('/',auth(categEndPoints.ADD_CATEG),expressAsyncHandler(SU.getAllSubCategory))
+router.get('/subCategoryHandels',auth(categEndPoints.ADD_CATEG),expressAsyncHandler(SU.getAllSubCategories))
+router.get('/subCategoryById/:subCategoryId',auth(categEndPoints.ADD_CATEG),expressAsyncHandler(SU.getAllSubCategories))
 
 
 

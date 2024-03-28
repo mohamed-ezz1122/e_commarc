@@ -1,11 +1,12 @@
 
 
 import multer from "multer"
-import generateUniqueString from "../utils/generateUniqueString.js";
-import { allowedExtensions } from "../utils/allowedExtensions.js";
+
 
 import fs from 'fs' // built in module for handling file system
 import path from 'path' // built in module for handling path
+import { generateUniqueString } from "../utils/generate-Unique-String.js";
+import { allowedExtensions } from "../utils/allowed-extensions.js";
 
 
 /**

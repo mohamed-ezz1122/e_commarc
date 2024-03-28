@@ -1,7 +1,8 @@
 
-import { Schema, model } from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
 import { systemRoles } from "../../src/utils/system-roles.js";
-
+// import { object } from "joi";
+import bcrypt from 'bcrypt'
 const userSchema = new Schema({
     username: {
         type: String,
@@ -33,7 +34,7 @@ const userSchema = new Schema({
     }],
     role: {
         type: String,
-        enum: [systemRoles.USER, systemRoles.ADMIN,systemRoles.SUPE_ADMIN],
+        enum: Object.values(systemRoles),
         default: systemRoles.USER
     },
     isEmailVerified: {
@@ -48,7 +49,20 @@ const userSchema = new Schema({
     isLoggedIn: {
         type: Boolean,
         default: false
+    },token:{
+        type:String,
+        tirm:true
     }
 }, { timestamps: true })
 
-export default model('User', userSchema)
+// userSchema.pre('save',function(next,hash){
+//     this.password = bcrypt.hashSync(this.password,+process.env.SALT_ROUNDS)
+
+//     next()
+
+
+// })
+
+
+
+export default mongoose.models.User || model('User', userSchema)

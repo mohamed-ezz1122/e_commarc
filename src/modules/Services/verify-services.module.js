@@ -24,6 +24,7 @@ const sendEmailService=async(
             pass:process.env.EMAIL_PASSWORD
         }
     })
+    // {console.log(process.env.EMAIL);}
     const info=await transport.sendMail({
         from: `"Fred Foo 👻" <${process.env.EMAIL}>`, 
         to, 

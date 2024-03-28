@@ -1,8 +1,12 @@
 import slugify from "slugify"
 import Brand from "../../../DB/Models/brand.model.js"
 import SubCategory from "../../../DB/Models/sub-category.model.js"
-import generateUniqueString from "../../utils/generate-Unique-String.js"
+// import  from "../../utils/generate-Unique-String.js"
+
 import cloudinaryConnection from "../../utils/cloudinary.js"
+import { generateUniqueString } from "../../utils/generate-Unique-String.js"
+import CategoryModel from "../../../DB/Models/category.model.js"
+import { ApiFeatcher } from "../../utils/api-featchers.js"
 //======add Brand====//
 
 
@@ -21,7 +25,8 @@ export const addBrand=async (req,res,next)=>{
     //1)destract data from body
     const{name}=req.body
     //2)destract ids from params
-    const {subCategoryId}=req.params
+    const {subCategoryId,categoryId}=req.params
+    
     //3)destract _id from authUser
     const {_id}=req.authUser
     //4)check if categ or sub-categ found
@@ -29,11 +34,11 @@ export const addBrand=async (req,res,next)=>{
     if(!subCategory)return next (new Error('subCategory not-found',{cause:404}))
     //check it is coreact category
     if(categoryId!=subCategory.categoryId)return next (new Error(' not same category',{cause:401}))
-    const category=await SubCategory.findById(subCategory.categoryId)
+    const category=await CategoryModel.findById(subCategory.categoryId)
     if(!category)return next (new Error('category not-found',{cause:404}))
     //5)check if brand found by nameBrand or subCategId
     const brand=await Brand.findOne({name,subCategoryId})
-    if(!brand)return next (new Error('Brand not-found',{cause:404}))
+    if(brand)return next (new Error('Brand oready exist',{cause:404}))
     //6)generate slug
     const slug=slugify(name,'-')
     //7)upload logo
@@ -144,10 +149,37 @@ export const deleteBrand=async (req,res,next)=>{
 
 //======get all Brand====//
 export const getAllBrands=async (req,res,next)=>{
-    const Brands=await Brand.find()
+    const Brands=await Brand.find().populate([
+        {path:"categoryId"}
+    ])
 
     return res.status(200).json({
         msg:" success",
         data:Brands
     })
 }
+
+export const getAllBrandsHandel = async (req, res, next) =>{
+
+    const {page,size,sort,...search}=req.query
+    const featchers =new ApiFeatcher(req.query,Brand.find()).pagination(page,size).sort(sort).search(search)
+    const Brands=await featchers.mongooseQuery
+  
+    res.status(201).json({
+      msg:"success",
+      data:Brands
+    })
+  
+  }
+  export const getBrandById = async (req, res, next) =>{
+
+    const {brandId}=req.params
+    const brand=await Brand.findById(brandId)
+    if(!brand)return next(new Error ("brand not found use anther id",{cause:404}))
+  
+    res.status(201).json({
+      msg:"success",
+      data:brand
+    })
+  
+  }

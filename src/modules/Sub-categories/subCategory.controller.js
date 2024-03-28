@@ -3,8 +3,10 @@
 import slugify from "slugify"
 import Category from "../../../DB/Models/category.model.js"
 import SubCategory from "../../../DB/Models/sub-category.model.js"
-import generateUniqueString from "../../utils/generate-Unique-String.js"
 import cloudinaryConnection from "../../utils/cloudinary.js"
+import { generateUniqueString } from "../../utils/generate-Unique-String.js"
+import { ApiFeatcher } from "../../utils/api-featchers.js"
+
 //=============add sub-category ============//
 
 
@@ -19,7 +21,7 @@ import cloudinaryConnection from "../../utils/cloudinary.js"
  */
 export const addSubCategory=async (req,res,next)=>{
 //1)distract data from body
-const {name}=res.body
+const {name}=req.body
 //2)distract data from params
 const {categoryId}=req.params
 //3)distract _id from authUser
@@ -28,7 +30,7 @@ const {_id}=req.authUser
 const category=await Category.findById(categoryId)
 if(!category)return (new Error("category not fond",{cause:404}))
 //5)check if name exists
-const isNameExists=await SubCategory.findOne(name)
+const isNameExists=await SubCategory.findOne({name})
 if(isNameExists)return next('name is oready exists',{cause:401})
 //6)generate slug
 const slug=slugify(name,'-')
@@ -156,3 +158,29 @@ export const getAllSubCategory=async (req,res,next)=>{
     
     })
 }
+
+///////=======aply api featcher in sup categories
+export const getAllSubCategories = async (req, res, next) =>{
+
+    const {page,size,sort,...search}=req.query
+    const featchers =new ApiFeatcher(req.query,SubCategory.find()).pagination(page,size).sort(sort).search(search)
+    const subCategories=await featchers.mongooseQuery
+  
+    res.status(201).json({
+      msg:"success",
+      data:subCategories
+    })
+  
+  }
+  export const getCategoryById = async (req, res, next) =>{
+
+    const {subCategoryId}=req.params
+    const subCategory=await SubCategory.findById(subCategoryId)
+    if(!subCategory)return next(new Error ("subCategory not found use anther id",{cause:404}))
+  
+    res.status(201).json({
+      msg:"success",
+      data:subCategory
+    })
+  
+  }

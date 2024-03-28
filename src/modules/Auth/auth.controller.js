@@ -1,10 +1,12 @@
-import bcrypt from 'bcrypt'
+import bcrypt, { hash } from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
 import User from "../../../DB/Models/user.model.js"
 
 
 import sendEmailService from "../Services/verify-services.module.js"
+import userModel from '../../../DB/Models/user.model.js'
+import { generateUniqueString } from '../../utils/generate-Unique-String.js'
 // ========================================= SignUp API ================================//
 
 /**
@@ -23,7 +25,8 @@ export const signUp = async (req, res, next) => {
    if(isEmailExists)return next({cause:401,msg:"email is already exists"})
    //3)end confirmation email to the user
     // generate login token
-    const token = jwt.sign({ email }, process.env.JWT_SECRET_VERFICATION, { expiresIn: '30s' })
+    const token = jwt.sign({ email }, process.env.JWT_SECRET_VERFICATION, { expiresIn: '1h' })
+    
 
    const isEmailSend= await sendEmailService({
     
@@ -31,7 +34,7 @@ export const signUp = async (req, res, next) => {
         subject: 'Email Verification',
         message: `
         <h2>please clich on this link to verfiy your email</h2>
-        <a href="http://localhost:3000/auth/verify-email?token=${token}">Verify Email</a>
+        <a href="${req.protocol}://${req.headers.host}/auth/verify-email?token=${token}">Verify Email</a>
         ` 
    })
 //    console.log("===============");
@@ -110,12 +113,13 @@ export const signIn = async (req, res, next) => {
     // check password
     const isPasswordValid = bcrypt.compareSync(password, user.password)
     if (!isPasswordValid) {
-        return next(new Error('Invalid login credentails', { cause: 404 }))
+        return next(new Error('Invalid login credentails', { cause: 400 }))
     }
 
     // generate login token
-    const token = jwt.sign({ email, id: user._id, loggedIn: true }, process.env.JWT_SECRET_LOGIN, { expiresIn: '1d' })
+    const token = jwt.sign({ email, id: user._id }, process.env.JWT_SECRET_LOGIN, { expiresIn: '1d' })
     // updated isLoggedIn = true  in database
+    user.token=token
 
     user.isLoggedIn = true
     await user.save()
@@ -123,10 +127,8 @@ export const signIn = async (req, res, next) => {
     res.status(200).json({
         success: true,
         message: 'User logged in successfully',
-        data: {
-            token
-        }
-    })
+         token
+            })
 }
 // ========================================= user profile ================================//
 
@@ -201,6 +203,94 @@ export const deleteUser=async (req, res, next) =>{
     })
 }
 
+
+
+
+export const emailResat=async(req,res,next)=>{
+    const {email}=req.body
+
+    //check user is found
+    const user= await userModel.findOne({email})
+    if(!user)return next({cause:404,msg:"user not found"})
+
+
+    //generate token to send code to email
+const code=generateUniqueString(4)
+const hashCode =bcrypt.hashSync(code,+process.env.SALT_ROUNDS)
+    const token=jwt.sign({code:hashCode,email},process.env.REST_SIGNTCHER,{ expiresIn: '1h' })
+
+    const isEmailSend= await sendEmailService({
+    
+        to: email,
+        subject: ' Reset Password',
+        message: `
+        <h2>please clich on this link to verfiy your email</h2>
+        <a href="${req.protocol}://${req.headers.host}/auth/resetPassword?token=${token}">Rest Password</a>
+        ` 
+   })
+   if(!isEmailSend)return next({cause:500,msg:"Email is not sent, please try again later"})
+
+  const userupdated= await userModel.findOneAndUpdate({email},{forgetCode:hashCode},{new:true})
+
+
+   res.status(200).json({
+    msg:"Done",
+    data:userupdated
+   })
+
+
+}
+
+
+
+export const resetPassword = async(req,res,next)=>{
+const {token} = req.params
+const decodedToken=jwt.verify(token,process.env.REST_SIGNTCHER)
+
+const user =await userModel.findOne({email:decodedToken?.email,forgetCode:decodedToken?.code})
+if(!user)return next(new Error("user not found",{cause:404}))
+
+
+const {newPassword}=req.body
+
+ user.password = newPassword
+ user.forgetCode =null
+
+await user.save()
+
+res.status(200).json({
+    msg:"Success ",
+    data:user
+})
+
+
+
+
+}
+
+
+
+
+
+export const changePassword = async(req,res,next)=>{
+    const {oldPassword, reOldPassword} = req.body
+    const {_id :userId}=req.authUser
+
+    const user =await userModel.findById(userId)
+
+    const isPasswordMatshing= bcrypt.compareSync(oldPassword,user.password)
+
+    if(!isPasswordMatshing)return next(new Error("password not correct",{cause:400}))
+
+    user.password=oldPassword
+    await user.save()
+
+    res.status(200).json({
+        msg:"password update success",
+        data:user
+    })
+
+}
 
 
 
